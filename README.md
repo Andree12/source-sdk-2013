@@ -6,6 +6,10 @@ Contains the game code for Half-Life 2, HL2: DM and TF2.
 
 **Now including Team Fortress 2! ✨**
 
+## Contents of the fork (TF2 only)
+
+Class Reordering: In the class selection screen, you can reorder the classes by clicking on the right and left arrow buttons, a resource file made to work with this is also available.
+
 ## Build instructions
 
 Clone the repository using the following command:

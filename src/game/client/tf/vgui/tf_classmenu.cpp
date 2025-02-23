@@ -459,6 +459,8 @@ CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
 #ifdef _X360
 	m_pFooter = new CTFFooter( this, "Footer" );
 #endif
+	m_iCurrentFirstClassSlot = 1;
+	SetOrderOfClasses(m_iCurrentFirstClassSlot, false);
 
 	m_pTFPlayerModelPanel = NULL;
 	m_pSelectAClassLabel = NULL;
@@ -481,6 +483,22 @@ CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
 	m_pLocalPlayerBG = new CTFImagePanel( this, "localPlayerBG" );
 	m_iLocalPlayerClass = TEAM_UNASSIGNED;
 
+	//Vanilla Class slots
+	m_pClassSlots[1] = TF_CLASS_SCOUT;
+	m_pClassSlots[2] = TF_CLASS_SOLDIER;
+	m_pClassSlots[3] = TF_CLASS_PYRO;
+	m_pClassSlots[4] = TF_CLASS_DEMOMAN;
+	m_pClassSlots[5] = TF_CLASS_HEAVYWEAPONS;
+	m_pClassSlots[6] = TF_CLASS_ENGINEER;
+	m_pClassSlots[7] = TF_CLASS_MEDIC;
+	m_pClassSlots[8] = TF_CLASS_SNIPER;
+	m_pClassSlots[9] = TF_CLASS_SPY;
+	//Custom Class Slots
+	for (int i = 10; i != TF_LAST_NORMAL_CLASS; i++)
+	{
+		//m_pClassSlots[i] = i;
+	}
+
 	m_pClassButtons[TF_CLASS_SCOUT] = new CExImageButton( this, "scout", "", this );
 	m_pClassButtons[TF_CLASS_SOLDIER] = new CExImageButton( this, "soldier", "", this );
 	m_pClassButtons[TF_CLASS_PYRO] = new CExImageButton( this, "pyro", "", this );
@@ -494,6 +512,8 @@ CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
 #endif
 
 	m_pEditLoadoutButton = NULL;
+	m_pNextPageButton = NULL;
+	m_pPrevPageButton = NULL;
 	m_nBaseMusicGuid = -1;
 
 	ListenForGameEvent( "localplayer_changeteam" );
@@ -563,7 +583,8 @@ void CTFClassMenu::ApplySchemeSettings( IScheme *pScheme )
 	m_pTFPlayerModelPanel = dynamic_cast<CTFPlayerModelPanel*>( FindChildByName("TFPlayerModel") );
 	m_pSelectAClassLabel = dynamic_cast<CExLabel*>( FindChildByName( "ClassMenuSelect" ) );
 	m_pEditLoadoutButton = dynamic_cast<CExButton*>( FindChildByName( "EditLoadoutButton" ) );
-
+	m_pNextPageButton = dynamic_cast<CExButton*>( FindChildByName("NextPageButton") );
+	m_pPrevPageButton = dynamic_cast<CExButton*>( FindChildByName("PrevPageButton") );
 	const char *pTeamExtension = GetTeamNumber() == TF_TEAM_BLUE ? "blu" : "red";
 	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
 	{
@@ -600,7 +621,7 @@ void CTFClassMenu::PerformLayout()
 //-----------------------------------------------------------------------------
 int CTFClassMenu::GetCurrentPlayerClass()
 {
-	int iClass = TF_CLASS_HEAVYWEAPONS;
+	int iClass = TF_CLASS_RANDOM;
 	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
 
 	if ( pLocalPlayer && pLocalPlayer->m_Shared.GetDesiredPlayerClassIndex() != TF_CLASS_UNDEFINED )
@@ -681,7 +702,7 @@ void CTFClassMenu::ShowPanel( bool bShow )
 	}
 }
 
-const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
+const char *g_pszLegacyClassSelectVCDWeapons[TF_CLASS_COUNT] =
 {
 	"",										// TF_CLASS_UNDEFINED = 0,
 	"",										// TF_CLASS_SCOUT,				// weapons handled individually
@@ -692,10 +713,11 @@ const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
 	"tf_weapon_minigun",					// TF_CLASS_HEAVYWEAPONS,
 	"tf_weapon_flamethrower",				// TF_CLASS_PYRO,
 	"",										// TF_CLASS_SPY,				// weapons handled individually
-	"tf_weapon_wrench",						// TF_CLASS_ENGINEER,		
+	"tf_weapon_wrench",						// TF_CLASS_ENGINEER,
+	"",
 };
 
-int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
+int g_iLegacyClassSelectWeaponSlots[TF_CLASS_COUNT] =
 {
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_UNDEFINED = 0,
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_SCOUT,			// TF_FIRST_NORMAL_CLASS
@@ -707,6 +729,7 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_PYRO,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_SPY,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_ENGINEER,		
+	LOADOUT_POSITION_MELEE,			// TF_CLASS_CIVILIAN
 };
 
 //-----------------------------------------------------------------------------
@@ -739,6 +762,12 @@ void CTFClassMenu::SelectClass( int iClass )
 		return;
 
 	if ( !m_pEditLoadoutButton )
+		return;
+
+	if (!m_pNextPageButton)
+		return;
+
+	if (!m_pPrevPageButton)
 		return;
 
 	// Update select hint icon for Steam Controller
@@ -787,13 +816,56 @@ void CTFClassMenu::SelectClass( int iClass )
 	}
 	else
 	{
-		m_pTFPlayerModelPanel->SetToPlayerClass( iClass, bClassWasRandom );
-
-		m_pEditLoadoutButton->SetVisible( true );
-		if ( m_pEditLoadoutHintIcon )
+		//Correct the class id in selection screen
+		switch (iClass)
 		{
-			m_pEditLoadoutHintIcon->SetVisible( true );
+		case TF_CLASS_SOLDIER:
+			iClass = m_pClassSlots[2];
+			break;
+		case TF_CLASS_PYRO:
+			iClass = m_pClassSlots[3];
+			break;
+		case TF_CLASS_HEAVYWEAPONS:
+			iClass = m_pClassSlots[5];
+			break;
+		case TF_CLASS_ENGINEER:
+			iClass = m_pClassSlots[6];
+			break;
+		case TF_CLASS_MEDIC:
+			iClass = m_pClassSlots[7];
+			break;
+		case TF_CLASS_SNIPER:
+			iClass = m_pClassSlots[8];
+			break;
+		case TF_CLASS_SPY:
+			iClass = m_pClassSlots[9];
+			break;
+		default:
+			if (iClass < TF_CLASS_CIVILIAN)
+			{
+				iClass = m_pClassSlots[iClass];
+			}
+			break;
 		}
+
+		m_pTFPlayerModelPanel->SetToPlayerClass( iClass, bClassWasRandom );
+		if (iClass != TF_CLASS_CIVILIAN)
+		{
+			m_pEditLoadoutButton->SetVisible(true);
+			if (m_pEditLoadoutHintIcon)
+			{
+				m_pEditLoadoutHintIcon->SetVisible(true);
+			}
+		}
+		else
+		{
+			m_pEditLoadoutButton->SetVisible(false);
+			if (m_pEditLoadoutHintIcon)
+			{
+				m_pEditLoadoutHintIcon->SetVisible(false);
+			}
+		}
+
 
 		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
 		if ( pLocalPlayer )
@@ -1196,6 +1268,7 @@ void CTFClassMenu::SetVisible( bool state )
 	}
 	else
 	{
+		SetOrderOfClasses(m_iCurrentFirstClassSlot = 1, true);
 		engine->ServerCmd( "menuclosed" );	
 		engine->ClientCmd( "_cl_classmenuopen 0" );
 		
@@ -1274,15 +1347,156 @@ void CTFClassMenu::Go()
 	}
 }
 
+static const char* g_sDialogVariables[] = {
+	"",
+	"numScout",
+	"numSoldier",
+	"numPyro",
+
+	"numDemoman",
+	"numHeavy",
+	"numEngineer",
+
+	"numMedic",
+	"numSniper",
+	"numSpy",
+	"",
+};
+
+static const char* g_sClassImagesBlue[] = {
+	"",
+	"class_sel_sm_scout_blu",
+	"class_sel_sm_soldier_blu",
+	"class_sel_sm_pyro_blu",
+
+	"class_sel_sm_demo_blu",
+	"class_sel_sm_heavy_blu",
+	"class_sel_sm_engineer_blu",
+
+	"class_sel_sm_medic_blu",
+	"class_sel_sm_sniper_blu",
+	"class_sel_sm_spy_blu",
+
+	"class_sel_sm_scout_blu",
+};
+
+static const char* g_sClassImagesRed[] = {
+	"",
+	"class_sel_sm_scout_red",
+	"class_sel_sm_soldier_red",
+	"class_sel_sm_pyro_red",
+
+	"class_sel_sm_demo_red",
+	"class_sel_sm_heavy_red",
+	"class_sel_sm_engineer_red",
+
+	"class_sel_sm_medic_red",
+	"class_sel_sm_sniper_red",
+	"class_sel_sm_spy_red",
+
+	"class_sel_sm_scout_red",
+};
+
+static const char* g_sClassImagesInactive[] = {
+	"",
+	"class_sel_sm_scout_inactive",
+	"class_sel_sm_soldier_inactive",
+	"class_sel_sm_pyro_inactive",
+
+	"class_sel_sm_demo_inactive",
+	"class_sel_sm_heavy_inactive",
+	"class_sel_sm_engineer_inactive",
+
+	"class_sel_sm_medic_inactive",
+	"class_sel_sm_sniper_inactive",
+	"class_sel_sm_spy_inactive",
+
+	"class_sel_sm_scout_inactive",
+};
+
+int g_ClassDefinesRemap[] = {
+	0,
+	TF_CLASS_SCOUT,
+	TF_CLASS_SOLDIER,
+	TF_CLASS_PYRO,
+
+	TF_CLASS_DEMOMAN,
+	TF_CLASS_HEAVYWEAPONS,
+	TF_CLASS_ENGINEER,
+
+	TF_CLASS_MEDIC,
+	TF_CLASS_SNIPER,
+	TF_CLASS_SPY,
+	TF_CLASS_CIVILIAN,
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: Scroll the list of classes in the class selection by left or right
+//-----------------------------------------------------------------------------
+
+void CTFClassMenu::ChangeOrderOfClasses(int Direction)
+{
+	m_iCurrentFirstClassSlot = m_iCurrentFirstClassSlot + Direction;
+	//TODO: Simplifiy this piece of code
+
+	int AvailableClasses = TF_CLASS_COUNT_ALL - 2;
+	if (m_iCurrentFirstClassSlot > AvailableClasses)
+	{
+		m_iCurrentFirstClassSlot = TF_FIRST_NORMAL_CLASS;
+	}
+	else if (m_iCurrentFirstClassSlot < TF_FIRST_NORMAL_CLASS)
+	{
+		m_iCurrentFirstClassSlot = AvailableClasses;
+	}
+
+	SetOrderOfClasses(m_iCurrentFirstClassSlot, true);
+}
+
+void CTFClassMenu::SetOrderOfClasses(int FirstClass, bool IsEnabled)
+{
+	if (IsEnabled)
+	{
+		const char* pTeamExtension = GetTeamNumber() == TF_TEAM_BLUE ? "blu" : "red";
+		//Msg("Current Team: %s \n", pTeamExtensionA);
+		//Msg("Class list: \n");
+		for (int i = 1; i < TF_CLASS_CIVILIAN; ++i)
+		{
+			int NewID = i + (FirstClass - 1);
+			if (NewID >= TF_CLASS_CIVILIAN)
+			{
+				NewID = g_ClassDefinesRemap[NewID - (TF_CLASS_CIVILIAN - 1)];
+			}
+			else
+			{
+				NewID = g_ClassDefinesRemap[NewID];
+			}
+			
+			int RemapI = g_ClassDefinesRemap[i];
+			m_pClassButtons[RemapI]->SetImageDefault(CFmtStr("class_sel_sm_%s_inactive", g_aRawPlayerClassNamesShort[NewID]).Access());
+			m_pClassButtons[RemapI]->SetImageArmed(CFmtStr("class_sel_sm_%s_inactive", g_aRawPlayerClassNamesShort[NewID]).Access());
+			m_pClassButtons[RemapI]->SetImageSelected(CFmtStr("class_sel_sm_%s_%s", g_aRawPlayerClassNamesShort[NewID], pTeamExtension).Access());
+			m_pClassSlots[i] = NewID;
+			//Msg("%i. %s \n", i, g_aRawPlayerClassNames[m_pClassSlots[i]]);
+		}
+
+		SelectClass(TF_CLASS_RANDOM);
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFClassMenu::OnCommand( const char *command )
 {
+	
 	if ( !V_strnicmp( command, "select", 6 ) )
 	{
 		const char *pClass = command + 6;
-		const int iClass = atoi( pClass );
+		int iClass = atoi(pClass);
+		if (iClass != TF_CLASS_RANDOM)
+		{
+			iClass = m_pClassSlots[atoi(pClass)];
+		}
 
 		// Avoid restarting the animation if the user selected on the same class
 		if ( iClass != m_iCurrentClassIndex )
@@ -1296,6 +1510,14 @@ void CTFClassMenu::OnCommand( const char *command )
 		}
 
 		Go();
+	}
+	else if ( !Q_strnicmp(command, "nextpage", 8) )
+	{
+		ChangeOrderOfClasses(1);
+	}
+	else if ( !Q_strnicmp( command, "prevpage", 8 ) )
+	{
+		ChangeOrderOfClasses(-1);
 	}
 	else if ( !V_strnicmp( command, "resetclass", 10 ) )
 	{
@@ -1337,72 +1559,6 @@ void CTFClassMenu::Join_Class( const CCommand &args )
 		ShowPanel( false );
 	}
 }
-
-static const char *g_sDialogVariables[] = {
-	"",
-	"numScout",
-	"numSoldier",
-	"numPyro",
-
-	"numDemoman",
-	"numHeavy",
-	"numEngineer",
-	
-	"numMedic",
-	"numSniper",
-	"numSpy",
-	"",
-};
-
-static const char *g_sClassImagesBlue[] = {
-	"",
-	"class_sel_sm_scout_blu",
-	"class_sel_sm_soldier_blu",
-	"class_sel_sm_pyro_blu",
-
-	"class_sel_sm_demo_blu",
-	"class_sel_sm_heavy_blu",
-	"class_sel_sm_engineer_blu",
-
-	"class_sel_sm_medic_blu",
-	"class_sel_sm_sniper_blu",
-	"class_sel_sm_spy_blu",
-
-	"class_sel_sm_scout_blu",
-};
-
-static const char *g_sClassImagesRed[] = {
-	"",
-	"class_sel_sm_scout_red",
-	"class_sel_sm_soldier_red",
-	"class_sel_sm_pyro_red",
-	
-	"class_sel_sm_demo_red",
-	"class_sel_sm_heavy_red",
-	"class_sel_sm_engineer_red",
-	
-	"class_sel_sm_medic_red",
-	"class_sel_sm_sniper_red",
-	"class_sel_sm_spy_red",
-
-	"class_sel_sm_scout_red",
-};
-
-int g_ClassDefinesRemap[] = {
-	0,
-	TF_CLASS_SCOUT,	
-	TF_CLASS_SOLDIER,
-	TF_CLASS_PYRO,
-
-	TF_CLASS_DEMOMAN,
-	TF_CLASS_HEAVYWEAPONS,
-	TF_CLASS_ENGINEER,
-
-	TF_CLASS_MEDIC,
-	TF_CLASS_SNIPER,
-	TF_CLASS_SPY,
-	TF_CLASS_CIVILIAN,
-};
 
 void CTFClassMenu::UpdateNumClassLabels( int iTeam )
 {
@@ -1678,5 +1834,4 @@ void CTFClassMenu::CheckMvMUpgrades()
 		}
 	}
 }
-
 

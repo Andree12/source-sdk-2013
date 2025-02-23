@@ -73,10 +73,15 @@ public:
 	MESSAGE_FUNC_PTR_CHARPTR( OnShowPage, "ShowPage", panel, page );
 	CON_COMMAND_MEMBER_F( CTFClassMenu, "join_class", Join_Class, "Send a joinclass command", 0 );
 
+	void ChangeOrderOfClasses(int Direction);
+
+	void SetOrderOfClasses(int FirstClass, bool IsEnabled);
+
 	virtual void OnCommand( const char *command );
 	virtual void OnClose();
 	virtual void ShowPanel( bool bShow );
 	virtual void UpdateClassCounts( void ){}
+
 	void		 SelectClass( int iClass );
 
 	virtual int GetTeamNumber( void ) = 0;
@@ -115,6 +120,8 @@ protected:
 	CExplanationPopup		*m_pClassHighlightPanel;
 	CSCHintIcon				*m_pEditLoadoutHintIcon;
 	CSCHintIcon				*m_pCancelHintIcon;
+	CExButton				*m_pNextPageButton;
+	CExButton				*m_pPrevPageButton;
 
 private:
 
@@ -127,8 +134,9 @@ private:
 	ButtonCode_t	m_iClassMenuKey;
 	int				m_iCurrentClassIndex;
 	vgui::CKeyRepeatHandler	m_KeyRepeat;
-
+	int				m_pClassSlots[TF_CLASS_CIVILIAN];
 	int				m_nBaseMusicGuid;
+	int				m_iCurrentFirstClassSlot;
 
 #ifndef _X360
 	CTFImagePanel *m_ClassCountImages[CLASS_COUNT_IMAGES];
@@ -173,5 +181,5 @@ public:
 	virtual void UpdateClassCounts( void ){ UpdateNumClassLabels( TF_TEAM_RED ); }
 };
 
-#endif // TF_CLASSMENU_H
 
+#endif // TF_CLASSMENU_H
