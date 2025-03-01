@@ -1472,9 +1472,12 @@ void CTFClassMenu::SetOrderOfClasses(int FirstClass, bool IsEnabled)
 			}
 			
 			int RemapI = g_ClassDefinesRemap[i];
-			m_pClassButtons[RemapI]->SetImageDefault(CFmtStr("class_sel_sm_%s_inactive", g_aRawPlayerClassNamesShort[NewID]).Access());
-			m_pClassButtons[RemapI]->SetImageArmed(CFmtStr("class_sel_sm_%s_inactive", g_aRawPlayerClassNamesShort[NewID]).Access());
-			m_pClassButtons[RemapI]->SetImageSelected(CFmtStr("class_sel_sm_%s_%s", g_aRawPlayerClassNamesShort[NewID], pTeamExtension).Access());
+			if (i < TF_CLASS_ENGINEER + 1)
+			{
+				m_pClassButtons[RemapI]->SetImageDefault(CFmtStr("class_sel_sm_%s_inactive", g_aRawPlayerClassNamesShort[NewID]).Access());
+				m_pClassButtons[RemapI]->SetImageArmed(CFmtStr("class_sel_sm_%s_inactive", g_aRawPlayerClassNamesShort[NewID]).Access());
+				m_pClassButtons[RemapI]->SetImageSelected(CFmtStr("class_sel_sm_%s_%s", g_aRawPlayerClassNamesShort[NewID], pTeamExtension).Access());
+			}
 			m_pClassSlots[i] = NewID;
 			//Msg("%i. %s \n", i, g_aRawPlayerClassNames[m_pClassSlots[i]]);
 		}
